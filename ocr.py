@@ -6,17 +6,18 @@ import argparse
 from skimage import measure
 from PIL import Image
 
-def save_pure_text(text, output_path):
+def save_pure_text(image, output_path):
+	text = pytesseract.image_to_string(image)
 	file = open(output_path, 'w')
 	file.writelines(text)
-	print(text)
+	# print(text)
 
-def save_pure_img(input_path, output_path):
-	largest_contour = find_largest_contour(input_path)
+def save_pure_img(image, output_path):
+	largest_contour = find_largest_contour(image)
 	save_cropped_image(largest_contour, output_path)
 
-def find_largest_contour(image_path, tolerance=10):
-    original_image = Image.open(image_path).convert("RGB")
+def find_largest_contour(orig_image, tolerance=10):
+    original_image = orig_image.convert("RGB")
 
     # 转换为灰度图像
     grayscale_image = original_image.convert("L")
@@ -58,6 +59,12 @@ def save_cropped_image(cropped_image, output_path):
     result_image.save(output_path)
 
 
+def init_dir(directory_path):
+	if not os.path.exists(directory_path):
+		# 创建目录
+		os.makedirs(directory_path)
+
+
 def main(args):
 	input_path = args.i
 	output_path = args.o
@@ -65,27 +72,33 @@ def main(args):
 	output_text_format = "{output_path}/text/{file_name}.txt"
 	output_img_format = "{output_path}/img/{file_name}.png"
 
-	# img转txt
+	# 初始化相关目录
+	init_dir(output_path+'/text')
+	init_dir(output_path+'/img')
+
+	# 图片中内容提取
 	files = os.listdir(input_path)
 	for file in files:
 		print(file)
-		name = file.split('.')[0]
+		file_name = file.split('.')[0]
 		image = Image.open(input_path+'/'+file)
-		text = pytesseract.image_to_string(image)
 
-		txt_output_path = output_text_format.replace('{output_path}', output_path).replace('{file_name}', name)
-		img_output_path = output_img_format.replace('{output_path}', output_path).replace('{file_name}', name)
+		txt_output_path = output_text_format.replace('{output_path}', output_path).replace('{file_name}', file_name)
+		img_output_path = output_img_format.replace('{output_path}', output_path).replace('{file_name}', file_name)
 
-		save_pure_text(text, txt_output_path)
-		save_pure_img(input_path+'/'+file, img_output_path)
+		# 提取文字
+		save_pure_text(image, txt_output_path)
+		# 提取图片
+		save_pure_img(image, img_output_path)
 
 		print('-' * 20)
+
 
 if __name__ == '__main__':
 	# 读取参数
 	parser = argparse.ArgumentParser()
-	parser.add_argument('-i', type=str, default='', help='追加参数')
-	parser.add_argument('-o', type=str, default='', help='追加参数')
+	parser.add_argument('-i', type=str, default='', help='输入路径 input_path')
+	parser.add_argument('-o', type=str, default='', help='输出路径 output_path')
 	# parser.add_argument('-f', action='store_true', help='无追加参数')
 	args = parser.parse_args()
 
